@@ -8,15 +8,13 @@ import { ConfigType, getAllConfig } from '../config';
 @Global()
 @Module({
   imports: [
-    // ConfigModule.forRoot({
-    //   load: [getAllConfig],
-    //   ignoreEnvFile: true,
-    //   isGlobal: true,
-    // }),
+    ConfigModule.forRoot({
+      load: [getAllConfig],
+      ignoreEnvFile: true,
+      isGlobal: true,
+    }),
     LoggerModule.forRootAsync({
-      // imports: [ConfigModule],
-      providers: [ConfigService],
-      // inject: [ConfigService],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService<ConfigType>) => {
         const loggerOpt = configService.get('logger', {
           infer: true,
@@ -33,18 +31,20 @@ import { ConfigType, getAllConfig } from '../config';
                     colorize: true,
                     singleLine: true,
                     translateTime: 'SYS:yyyy-MM-dd HH:mm:ss',
-                    ignore: 'context, hostname',
+                    ignore: 'context,hostname,pid',
                     messageFormat: '{if context}[{context}]{end}{msg}',
                   } as PrettyOptions,
                 },
                 {
                   target: 'pino-roll',
                   level: loggerOpt?.RollerLogLevel,
-                  file: join('logs', 'info'),
-                  frequency: loggerOpt?.frequency,
-                  dateFormat: loggerOpt?.dateFormat,
-                  extension: '.log',
-                  mkdir: true,
+                  options: {
+                    file: join(process.cwd(), 'logs', 'info'),
+                    frequency: 'daily',
+                    dateFormat: 'yyyy-MM-dd',
+                    extension: '.log',
+                    mkdir: true,
+                  },
                 },
               ],
             },
