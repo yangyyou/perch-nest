@@ -1,41 +1,55 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { join } from 'path';
 import { PrettyOptions } from 'pino-pretty';
+import { ConfigType, getAllConfig } from '../config';
 
 @Global()
 @Module({
   imports: [
-    LoggerModule.forRoot({
-      useExisting: true,
-      pinoHttp: {
-        transport: {
-          targets: [
-            {
-              target: 'pino-pretty',
-              level: 'debug',
-              options: {
-                colorize: true,
-                singleLine: true,
-                translateTime: 'SYS:yyyy-MM-dd HH:mm:ss',
-                ignore: 'context,hostname',
-                messageFormat: '{if context}[{context}]{end}{msg}',
-              } as PrettyOptions,
+    // ConfigModule.forRoot({
+    //   load: [getAllConfig],
+    //   ignoreEnvFile: true,
+    //   isGlobal: true,
+    // }),
+    LoggerModule.forRootAsync({
+      // imports: [ConfigModule],
+      providers: [ConfigService],
+      // inject: [ConfigService],
+      useFactory: (configService: ConfigService<ConfigType>) => {
+        const loggerOpt = configService.get('logger', {
+          infer: true,
+        });
+        return {
+          useExisting: true,
+          pinoHttp: {
+            transport: {
+              targets: [
+                {
+                  target: 'pino-pretty',
+                  level: loggerOpt?.PrettierLogLevel,
+                  options: {
+                    colorize: true,
+                    singleLine: true,
+                    translateTime: 'SYS:yyyy-MM-dd HH:mm:ss',
+                    ignore: 'context, hostname',
+                    messageFormat: '{if context}[{context}]{end}{msg}',
+                  } as PrettyOptions,
+                },
+                {
+                  target: 'pino-roll',
+                  level: loggerOpt?.RollerLogLevel,
+                  file: join('logs', 'info'),
+                  frequency: loggerOpt?.frequency,
+                  dateFormat: loggerOpt?.dateFormat,
+                  extension: '.log',
+                  mkdir: true,
+                },
+              ],
             },
-            {
-              target: 'pino-roll',
-              level: 'info',
-              options: {
-                file: join('logs', 'info'),
-                size: '10m',
-                frequency: 'daily',
-                extension: '.log',
-                dateFormat: 'yyyy-MM-dd',
-                mkdir: true,
-              },
-            },
-          ],
-        },
+          },
+        };
       },
     }),
   ],
